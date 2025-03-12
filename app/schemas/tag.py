@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic import BaseModel
 
 class TagBase(BaseModel):
@@ -6,8 +7,12 @@ class TagBase(BaseModel):
 class TagCreate(TagBase):
     pass
 
+class TagUpdate(BaseModel):
+    name: Optional[str] = None
+
 class TagResponse(TagBase):
     id: int
 
     class Config:
         orm_mode = True
+        

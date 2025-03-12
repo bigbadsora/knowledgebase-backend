@@ -20,6 +20,9 @@ def get_tag(tag_id: int, db: Session = Depends(get_db)):
 
 @router.post("/", response_model=TagResponse, status_code=201)
 def create_tag(tag: TagCreate, db: Session = Depends(get_db)):
+    existing_tag = db.query(Tag).filter(Tag.name == tag.name).first()
+    if existing_tag:
+        raise HTTPException(status_code=400, detail="Tag name already exists")
     db_tag = Tag(**tag.dict())
     db.add(db_tag)
     db.commit()
@@ -31,12 +34,16 @@ def update_tag(tag_id: int, tag: TagUpdate, db: Session = Depends(get_db)):
     db_tag = db.query(Tag).filter(Tag.id == tag_id).first()
     if db_tag is None:
         raise HTTPException(status_code=404, detail="Tag not found")
-    if tag.name is not None:
-        if db.query(Tag).filter(Tag.name == tag.name).first():
+    
+    # Ensure new tag name is unique
+    if tag.name and tag.name != db_tag.name:
+        existing_tag = db.query(Tag).filter(Tag.name == tag.name).first()
+        if existing_tag:
             raise HTTPException(status_code=400, detail="Tag name already exists")
-    for key, value in tag.model_dump().items():
-        if value is not None:
-            setattr(db_tag, key, value)
+    
+    for key, value in tag.model_dump(exclude_unset=True).items():
+        setattr(db_tag, key, value)
+    
     db.commit()
     db.refresh(db_tag)
     return db_tag
@@ -48,4 +55,4 @@ def delete_tag(tag_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Tag not found")
     db.delete(db_tag)
     db.commit()
-    return None
+    return Response(status_code=204)
